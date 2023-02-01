@@ -1,14 +1,14 @@
 package gofret
 
-import "fmt"
-
 type Broadcast struct {
 }
 
-func Greet() {
-	fmt.Println("Hello gofret!")
+func (b *Broadcast) Connect(address string) {}
+
+func (b *Broadcast) Broadcast(input []byte) error {
+	return nil
 }
 
-func FIFOTotalOrderBroadcast() {
-	return 5
+func FIFOTotalOrderBroadcast() Broadcast {
+	return Broadcast{}
 }

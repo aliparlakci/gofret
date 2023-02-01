@@ -1,14 +1,17 @@
 package gofret_test
 
 import (
-	"github.com/aliparlakci/gofret"
 	"testing"
+
+	"github.com/aliparlakci/gofret"
 )
 
-func TestGreet(t *testing.T) {
-	gofret.Greet()
-}
-
 func TestFIFOTotalOrder(t *testing.T) {
-	gofret.FIFOTotalOrder()
+	broadcaster := gofret.FIFOTotalOrderBroadcast()
+	broadcaster.Connect("tcp://localhost:8181/")
+
+	msg := []byte("hello")
+	if err := broadcaster.Broadcast(msg); err != nil {
+		panic(err)
+	}
 }
