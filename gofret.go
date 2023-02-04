@@ -1,65 +1,116 @@
 package gofret
 
 import (
-	"github.com/aliparlakci/gofret/communication"
+	"encoding/json"
+	"fmt"
+
+	"github.com/aliparlakci/gofret/broadcast"
 )
 
-type broadcast_container struct {
-	lamport_clock int32
-	communication.Communicator
-	address          string
-	peer_addrs       []string
-	delivery_channel chan []byte
+type Configuration = broadcast.Configuration
+type Broadcaster = broadcast.Broadcaster
+
+type fifo_broadcast_message struct {
+	Address string // we should find another identifier since address for a node might not be same across nodes
+	SendSeq uint64
+	Message []byte
 }
 
-type Configuration struct {
-	SelfAddress   string
-	PeerAddresses []string
+type fifo_broadcast_container struct {
+	config            Configuration
+	broadcaster       Broadcaster
+	incoming_messages chan []byte
+	delivery_channel  chan []byte
+	sendSeq           uint64
+	delivered         []uint64
+	buffer            []fifo_broadcast_message
 }
 
-type Broadcaster interface {
-	Init() (chan []byte, error)
-	Broadcast([]byte) error
-}
+func (f *fifo_broadcast_container) Init() (chan []byte, error) {
+	broadcaster := broadcast.NewBroadcast(f.config)
 
-func (bc *broadcast_container) Connect(address string) {}
-
-func (bc *broadcast_container) Broadcast(message []byte) error {
-	bc.delivery_channel <- message
-	for _, peer_addr := range bc.peer_addrs {
-		if peer_addr == bc.address {
-			continue
-		}
-
-		if err := bc.Communicator.Send(peer_addr, message); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func (bc *broadcast_container) Init() (chan []byte, error) {
-	bc.Communicator = communication.NewCommunication(bc.address)
-
-	incoming_messages, err := bc.Communicator.Listen()
+	var err error
+	f.incoming_messages, err = broadcaster.Init()
 	if err != nil {
 		return nil, err
 	}
 
-	bc.delivery_channel = make(chan []byte)
-	go bc.handle_new_messages(incoming_messages)
-	return bc.delivery_channel, nil
+	f.broadcaster = broadcaster
+	f.delivery_channel = make(chan []byte)
+	f.sendSeq = 0
+	f.buffer = make([]fifo_broadcast_message, 0)
+	f.delivered = make([]uint64, len(f.config.PeerAddresses))
+	for i := range f.delivered {
+		f.delivered[i] = 0
+	}
+
+	go f.handle_incoming_messages()
+	return f.delivery_channel, nil
 }
 
-func (bc *broadcast_container) handle_new_messages(incoming chan []byte) {
+func (f *fifo_broadcast_container) Broadcast(content []byte) error {
+	message := fifo_broadcast_message{
+		Address: f.config.SelfAddress,
+		Message: content,
+		SendSeq: f.sendSeq,
+	}
+	f.sendSeq++
+
+	marshalled_message, err := json.Marshal(message)
+	if err != nil {
+		return err
+	}
+
+	err = f.broadcaster.Broadcast(marshalled_message)
+	return err
+}
+
+func (f *fifo_broadcast_container) handle_incoming_messages() {
 	for {
-		message := <-incoming
-		bc.delivery_channel <- message
+		var message fifo_broadcast_message
+		data := <-f.incoming_messages
+		err := json.Unmarshal(data, &message)
+		if err != nil {
+			panic(err)
+		}
+
+		i, err := f.index_from_address(message.Address)
+		if err != nil {
+			panic(err)
+		}
+
+		if f.delivered[i] < message.SendSeq {
+			f.buffer = append(f.buffer, message)
+		}
+
+		f.deliver_messages()
 	}
 }
 
-func FIFOTotalOrderBroadcast(config Configuration) Broadcaster {
-	new_broadcast := broadcast_container{lamport_clock: 0, peer_addrs: config.PeerAddresses, address: config.SelfAddress}
-	return &new_broadcast
+func (f *fifo_broadcast_container) deliver_messages() {
+	for _, message := range f.buffer {
+		i, err := f.index_from_address(message.Address)
+		if err != nil {
+			panic(err)
+		}
+
+		if f.delivered[i] == message.SendSeq {
+			f.delivery_channel <- message.Message
+			f.delivered[i]++
+		}
+	}
+}
+
+func (f *fifo_broadcast_container) index_from_address(searched_address string) (uint, error) {
+	for i, address := range f.config.PeerAddresses {
+		if address == searched_address {
+			return uint(i), nil
+		}
+	}
+	return 0, fmt.Errorf("cannot find address %v", searched_address)
+}
+
+func FIFOBroadcast(config Configuration) (broadcast.Broadcaster, error) {
+	fifo_broadcaster := &fifo_broadcast_container{config: config}
+	return fifo_broadcaster, nil
 }
