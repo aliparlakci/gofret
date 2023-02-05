@@ -48,7 +48,7 @@ func (bc *broadcast_container) Init() (chan []byte, error) {
 	return incoming_messages, nil
 }
 
-func NewBroadcast(config Configuration) Broadcaster {
+func UnorderedBroadcast(config Configuration) Broadcaster {
 	new_broadcast := broadcast_container{peer_addrs: config.PeerAddresses, address: config.SelfAddress}
 	return &new_broadcast
 }

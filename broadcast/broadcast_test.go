@@ -10,7 +10,7 @@ func TestBroadcast(t *testing.T) {
 	message := "hello gofret!"
 
 	emitter_routine := func(address string, done chan bool) {
-		broadcaster := NewBroadcast(Configuration{
+		broadcaster := UnorderedBroadcast(Configuration{
 			SelfAddress:   address,
 			PeerAddresses: peer_addrs,
 		})
@@ -35,7 +35,7 @@ func TestBroadcast(t *testing.T) {
 	}
 
 	peer_routine := func(address string, done chan bool) {
-		broadcaster := NewBroadcast(Configuration{
+		broadcaster := UnorderedBroadcast(Configuration{
 			SelfAddress:   address,
 			PeerAddresses: peer_addrs,
 		})

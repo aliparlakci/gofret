@@ -10,6 +10,13 @@ import (
 type Configuration = broadcast.Configuration
 type Broadcaster = broadcast.Broadcaster
 
+var UnorderedBroadcast = broadcast.UnorderedBroadcast
+
+type FIFOBroadcaster interface {
+	Broadcaster
+	Wait() chan bool
+}
+
 type fifo_broadcast_message struct {
 	Address string // we should find another identifier since address for a node might not be same across nodes
 	SendSeq uint64
@@ -27,7 +34,7 @@ type fifo_broadcast_container struct {
 }
 
 func (f *fifo_broadcast_container) Init() (chan []byte, error) {
-	broadcaster := broadcast.NewBroadcast(f.config)
+	broadcaster := broadcast.UnorderedBroadcast(f.config)
 
 	var err error
 	f.incoming_messages, err = broadcaster.Init()
@@ -61,8 +68,10 @@ func (f *fifo_broadcast_container) Broadcast(content []byte) error {
 		return err
 	}
 
-	err = f.broadcaster.Broadcast(marshalled_message)
-	return err
+	if err := f.broadcaster.Broadcast(marshalled_message); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (f *fifo_broadcast_container) handle_incoming_messages() {
@@ -79,7 +88,7 @@ func (f *fifo_broadcast_container) handle_incoming_messages() {
 			panic(err)
 		}
 
-		if f.delivered[i] < message.SendSeq {
+		if f.delivered[i] <= message.SendSeq {
 			f.buffer = append(f.buffer, message)
 		}
 
@@ -99,6 +108,25 @@ func (f *fifo_broadcast_container) deliver_messages() {
 			f.delivered[i]++
 		}
 	}
+
+	f.cleanup_buffer()
+}
+
+func (f *fifo_broadcast_container) cleanup_buffer() {
+	new_buffer := make([]fifo_broadcast_message, 0)
+
+	for _, message := range f.buffer {
+		i, err := f.index_from_address(message.Address)
+		if err != nil {
+			panic(err)
+		}
+
+		if f.delivered[i] <= message.SendSeq {
+			new_buffer = append(new_buffer, message)
+		}
+	}
+
+	f.buffer = new_buffer
 }
 
 func (f *fifo_broadcast_container) index_from_address(searched_address string) (uint, error) {
@@ -110,7 +138,7 @@ func (f *fifo_broadcast_container) index_from_address(searched_address string) (
 	return 0, fmt.Errorf("cannot find address %v", searched_address)
 }
 
-func FIFOBroadcast(config Configuration) (broadcast.Broadcaster, error) {
+func FIFOBroadcast(config Configuration) Broadcaster {
 	fifo_broadcaster := &fifo_broadcast_container{config: config}
-	return fifo_broadcaster, nil
+	return fifo_broadcaster
 }
