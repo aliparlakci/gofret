@@ -1,20 +1,10 @@
-package gofret
+package broadcast
 
 type broadcast_container struct {
 	Communicator communicator
 	address      string
 	peer_addrs   []string
 	messages     chan []byte
-}
-
-type Configuration struct {
-	SelfAddress   string
-	PeerAddresses []string
-}
-
-type Broadcaster interface {
-	Init() (chan []byte, error)
-	Broadcast([]byte) error
 }
 
 func (bc *broadcast_container) Connect(address string) {}

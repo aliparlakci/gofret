@@ -1,14 +1,9 @@
-package gofret
+package broadcast
 
 import (
 	"encoding/json"
 	"fmt"
 )
-
-type FIFOBroadcaster interface {
-	Broadcaster
-	Wait() chan bool
-}
 
 type fifo_broadcast_message struct {
 	Address string // we should find another identifier since address for a node might not be same across nodes
