@@ -1,18 +1,32 @@
 package gofret_test
 
 import (
+	"math/rand"
 	"testing"
 	"time"
 
 	"github.com/aliparlakci/gofret"
 )
 
-func TestFIFOTotalOrder(t *testing.T) {
-	peer_addrs := []string{"localhost:8881", "localhost:8882", "localhost:8883", "localhost:8884", "localhost:8885"}
-	message := "hello gofret!"
+const letter_bytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
-	emitter_routine := func(address string, done chan bool) {
-		broadcaster := gofret.FIFOTotalOrderBroadcast(gofret.Configuration{
+func RandStringBytes(length int) []byte {
+	bytes_array := make([]byte, length)
+	for i := range bytes_array {
+		bytes_array[i] = letter_bytes[rand.Intn(len(letter_bytes))]
+	}
+	return bytes_array
+}
+
+func TestFIFOBroadcast(t *testing.T) {
+	peer_addrs := []string{"localhost:8881", "localhost:8882"}
+	messages := [][]byte{RandStringBytes(2 << 23), []byte("hello gofret!")}
+	incoming_channels := []chan []byte{make(chan []byte), make(chan []byte)}
+	done_signal := make(chan bool)
+	ready_signal := make(chan bool)
+
+	emitter_routine := func(address string, messages [][]byte, incoming_channel chan []byte, done chan bool) {
+		broadcaster := gofret.FIFOBroadcast(gofret.Configuration{
 			SelfAddress:   address,
 			PeerAddresses: peer_addrs,
 		})
@@ -23,21 +37,22 @@ func TestFIFOTotalOrder(t *testing.T) {
 		}
 
 		go func() {
-			received_message := <-incoming_messages
-			if string(received_message) != message {
-				t.Errorf("expected %v, got %v", message, received_message)
+			for {
+				incoming_channel <- <-incoming_messages
 			}
 		}()
 
-		if err := broadcaster.Broadcast([]byte(message)); err != nil {
-			t.Errorf("cannot broadcast: %v", err)
+		for _, message := range messages {
+			if err := broadcaster.Broadcast(message); err != nil {
+				t.Errorf("cannot broadcast: %v", err)
+			}
 		}
 
 		done <- true
 	}
 
-	peer_routine := func(address string, done chan bool) {
-		broadcaster := gofret.FIFOTotalOrderBroadcast(gofret.Configuration{
+	receiver_routine := func(address string, incoming_channel chan []byte, ready chan bool) {
+		broadcaster := gofret.FIFOBroadcast(gofret.Configuration{
 			SelfAddress:   address,
 			PeerAddresses: peer_addrs,
 		})
@@ -47,31 +62,33 @@ func TestFIFOTotalOrder(t *testing.T) {
 			t.Errorf("%v", err)
 		}
 
-		received_message := <-incoming_messages
-		if string(received_message) != message {
-			t.Errorf("expected %v, got %v", message, received_message)
-		}
-		done <- true
-	}
-
-	done := make(chan bool, len(peer_addrs)+1)
-	for _, peer_addr := range peer_addrs[1:] {
-		go peer_routine(peer_addr, done)
-	}
-
-	go emitter_routine(peer_addrs[0], done)
-	timeout := time.After(5000 * time.Millisecond)
-
-	count := 0
-	for {
-		select {
-		case <-done:
-			count += 1
-			if count == len(peer_addrs) {
-				return
+		go func() {
+			for {
+				incoming_channel <- <-incoming_messages
 			}
-		case <-timeout:
-			t.Fatalf("timed out")
+		}()
+		ready_signal <- true
+	}
+
+	go receiver_routine(peer_addrs[0], incoming_channels[0], ready_signal)
+	<-ready_signal
+
+	go emitter_routine(peer_addrs[1], messages, incoming_channels[1], done_signal)
+	<-done_signal
+
+	timeout := time.After(30000 * time.Millisecond)
+	select {
+	case incoming_message := <-incoming_channels[0]:
+		if string(incoming_message[:len(messages[1])-1]) == string(messages[1]) {
+			t.Errorf("order is not correct")
+			return
 		}
+	case incoming_message := <-incoming_channels[1]:
+		if string(incoming_message[:len(messages[1])-1]) == string(messages[1]) {
+			t.Errorf("order is not correct")
+			return
+		}
+	case <-timeout:
+		t.Errorf("timed out")
 	}
 }
