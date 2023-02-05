@@ -3,14 +3,7 @@ package gofret
 import (
 	"encoding/json"
 	"fmt"
-
-	"github.com/aliparlakci/gofret/broadcast"
 )
-
-type Configuration = broadcast.Configuration
-type Broadcaster = broadcast.Broadcaster
-
-var UnorderedBroadcast = broadcast.UnorderedBroadcast
 
 type FIFOBroadcaster interface {
 	Broadcaster
@@ -34,7 +27,7 @@ type fifo_broadcast_container struct {
 }
 
 func (f *fifo_broadcast_container) Init() (chan []byte, error) {
-	broadcaster := broadcast.UnorderedBroadcast(f.config)
+	broadcaster := UnorderedBroadcast(f.config)
 
 	var err error
 	f.incoming_messages, err = broadcaster.Init()
@@ -139,6 +132,6 @@ func (f *fifo_broadcast_container) index_from_address(searched_address string) (
 }
 
 func FIFOBroadcast(config Configuration) Broadcaster {
-	fifo_broadcaster := &fifo_broadcast_container{config: config}
-	return fifo_broadcaster
+	fifo_broadcaster := fifo_broadcast_container{config: config}
+	return &fifo_broadcaster
 }

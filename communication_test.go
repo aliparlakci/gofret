@@ -1,4 +1,4 @@
-package communication
+package gofret
 
 import (
 	"testing"
@@ -11,7 +11,7 @@ func TestSendAndReceive(t *testing.T) {
 	finished := make(chan bool, 2)
 
 	sender := func() {
-		comm := NewCommunication("localhost:8881")
+		comm := new_communication("localhost:8881")
 		if err := comm.Send("localhost:8880", []byte(message)); err != nil {
 			t.Errorf("%v", err)
 		}
@@ -19,7 +19,7 @@ func TestSendAndReceive(t *testing.T) {
 	}
 
 	receiver := func() {
-		comm := NewCommunication("localhost:8880")
+		comm := new_communication("localhost:8880")
 		incoming_messages, err := comm.Listen()
 		if err != nil {
 			t.Error(err)

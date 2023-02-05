@@ -1,9 +1,7 @@
-package broadcast
-
-import "github.com/aliparlakci/gofret/communication"
+package gofret
 
 type broadcast_container struct {
-	Communicator communication.Communicator
+	Communicator communicator
 	address      string
 	peer_addrs   []string
 	messages     chan []byte
@@ -37,7 +35,7 @@ func (bc *broadcast_container) Broadcast(message []byte) error {
 }
 
 func (bc *broadcast_container) Init() (chan []byte, error) {
-	bc.Communicator = communication.NewCommunication(bc.address)
+	bc.Communicator = new_communication(bc.address)
 
 	incoming_messages, err := bc.Communicator.Listen()
 	if err != nil {

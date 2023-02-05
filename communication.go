@@ -1,4 +1,4 @@
-package communication
+package gofret
 
 import (
 	"bytes"
@@ -13,13 +13,13 @@ type communication struct {
 	address  string
 }
 
-type Communicator interface {
+type communicator interface {
 	Listen() (chan []byte, error)
 	CloseConnection()
 	Send(address string, message []byte) error
 }
 
-func NewCommunication(address string) Communicator {
+func new_communication(address string) communicator {
 	return &communication{address: address}
 }
 

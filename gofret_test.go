@@ -1,11 +1,9 @@
-package gofret_test
+package gofret
 
 import (
 	"math/rand"
 	"testing"
 	"time"
-
-	"github.com/aliparlakci/gofret"
 )
 
 const letter_bytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
@@ -26,7 +24,7 @@ func TestFIFOBroadcast(t *testing.T) {
 	ready_signal := make(chan bool)
 
 	emitter_routine := func(address string, messages [][]byte, incoming_channel chan []byte, done chan bool) {
-		broadcaster := gofret.FIFOBroadcast(gofret.Configuration{
+		broadcaster := FIFOBroadcast(Configuration{
 			SelfAddress:   address,
 			PeerAddresses: peer_addrs,
 		})
@@ -52,7 +50,7 @@ func TestFIFOBroadcast(t *testing.T) {
 	}
 
 	receiver_routine := func(address string, incoming_channel chan []byte, ready chan bool) {
-		broadcaster := gofret.FIFOBroadcast(gofret.Configuration{
+		broadcaster := FIFOBroadcast(Configuration{
 			SelfAddress:   address,
 			PeerAddresses: peer_addrs,
 		})
