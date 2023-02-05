@@ -17,7 +17,7 @@ func RandStringBytes(length int) []byte {
 }
 
 func TestFIFOBroadcast(t *testing.T) {
-	peer_addrs := []string{"localhost:8881", "localhost:8882"}
+	peer_addrs := []string{"localhost:9991", "localhost:9992"}
 	messages := [][]byte{RandStringBytes(2 << 23), []byte("hello gofret!")}
 	incoming_channels := []chan []byte{make(chan []byte), make(chan []byte)}
 	done_signal := make(chan bool)
