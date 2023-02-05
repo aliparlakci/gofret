@@ -1,4 +1,4 @@
-package gofret
+package broadcast
 
 import (
 	"bytes"

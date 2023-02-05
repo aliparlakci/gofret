@@ -1,11 +1,11 @@
-package gofret
+package broadcast
 
 import (
 	"testing"
 	"time"
 )
 
-func TestBroadcast(t *testing.T) {
+func TestUnorderedBroadcast(t *testing.T) {
 	peer_addrs := []string{"localhost:8881", "localhost:8882", "localhost:8883", "localhost:8884", "localhost:8885"}
 	message := "hello gofret!"
 
