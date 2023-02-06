@@ -1,22 +1,11 @@
 package broadcast
 
 import (
-	"math/rand"
 	"testing"
 	"time"
 )
 
-const letter_bytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
-
-func randStringBytes(length int) []byte {
-	bytes_array := make([]byte, length)
-	for i := range bytes_array {
-		bytes_array[i] = letter_bytes[rand.Intn(len(letter_bytes))]
-	}
-	return bytes_array
-}
-
-func TestFIFOBroadcast(t *testing.T) {
+func TestCausalBroadcast(t *testing.T) {
 	peer_addrs := []string{"localhost:9991", "localhost:9992"}
 	messages := [][]byte{randStringBytes(2 << 23), []byte("hello gofret!")}
 	incoming_channels := []chan []byte{make(chan []byte), make(chan []byte)}
@@ -24,7 +13,7 @@ func TestFIFOBroadcast(t *testing.T) {
 	ready_signal := make(chan bool)
 
 	emitter_routine := func(address string, messages [][]byte, incoming_channel chan []byte, done chan bool) {
-		broadcaster := FIFOBroadcast(Configuration{
+		broadcaster := CausalBroadcast(Configuration{
 			SelfAddress:   address,
 			PeerAddresses: peer_addrs,
 		})
@@ -50,7 +39,7 @@ func TestFIFOBroadcast(t *testing.T) {
 	}
 
 	receiver_routine := func(address string, incoming_channel chan []byte, ready chan bool) {
-		broadcaster := FIFOBroadcast(Configuration{
+		broadcaster := CausalBroadcast(Configuration{
 			SelfAddress:   address,
 			PeerAddresses: peer_addrs,
 		})
