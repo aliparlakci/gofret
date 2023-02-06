@@ -36,6 +36,10 @@ func (bc *broadcast_container) Init() (chan []byte, error) {
 	return incoming_messages, nil
 }
 
+func (bc *broadcast_container) Close() error {
+	return bc.Communicator.CloseConnection()
+}
+
 func UnorderedBroadcast(config Configuration) Broadcaster {
 	new_broadcast := broadcast_container{peer_addrs: config.PeerAddresses, address: config.SelfAddress}
 	return &new_broadcast

@@ -78,6 +78,10 @@ func (c *causal_broadcast_container) Broadcast(content []byte) error {
 	return nil
 }
 
+func (c *causal_broadcast_container) Close() error {
+	return c.broadcaster.Close()
+}
+
 func (c *causal_broadcast_container) handle_incoming_messages() {
 	for {
 		var message causal_broadcast_message

@@ -8,4 +8,5 @@ type Configuration struct {
 type Broadcaster interface {
 	Init() (chan []byte, error)
 	Broadcast([]byte) error
+	Close() error
 }

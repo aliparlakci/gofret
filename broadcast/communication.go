@@ -6,21 +6,23 @@ import (
 	"io"
 	"log"
 	"net"
+	"reflect"
 )
 
 type communication struct {
-	listener net.Listener
-	address  string
+	listener     net.Listener
+	address      string
+	close_signal chan bool
 }
 
 type communicator interface {
 	Listen() (chan []byte, error)
-	CloseConnection()
+	CloseConnection() error
 	Send(address string, message []byte) error
 }
 
 func new_communication(address string) communicator {
-	return &communication{address: address}
+	return &communication{address: address, close_signal: make(chan bool)}
 }
 
 func (c *communication) Listen() (chan []byte, error) {
@@ -48,19 +50,26 @@ func (c *communication) Listen() (chan []byte, error) {
 
 	go func() {
 		for {
-			connection, err := l.Accept()
-			if err != nil {
-				log.Fatalf("something happened while trying to accept an incoming connection: %v", err)
+			select {
+			case <-c.close_signal:
+				return
+			default:
+				connection, err := l.Accept()
+				if err != nil {
+					log.Printf("%v, something happened while trying to accept an incoming connection: %v\n", reflect.TypeOf(err), err)
+					continue
+				}
+				go handle_request(connection)
 			}
-			go handle_request(connection)
 		}
 	}()
 
 	return incoming_messages, nil
 }
 
-func (c *communication) CloseConnection() {
-	c.listener.Close()
+func (c *communication) CloseConnection() error {
+	c.close_signal <- true
+	return c.listener.Close()
 }
 
 func (c *communication) Send(address string, message []byte) error {

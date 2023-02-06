@@ -62,6 +62,10 @@ func (f *fifo_broadcast_container) Broadcast(content []byte) error {
 	return nil
 }
 
+func (f *fifo_broadcast_container) Close() error {
+	return f.broadcaster.Close()
+}
+
 func (f *fifo_broadcast_container) handle_incoming_messages() {
 	for {
 		var message fifo_broadcast_message

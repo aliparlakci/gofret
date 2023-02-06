@@ -6,7 +6,7 @@ import (
 )
 
 func TestCausalBroadcast(t *testing.T) {
-	peer_addrs := []string{"localhost:9991", "localhost:9992"}
+	peer_addrs := []string{"localhost:9981", "localhost:9982"}
 	messages := [][]byte{randStringBytes(2 << 23), []byte("hello gofret!")}
 	incoming_channels := []chan []byte{make(chan []byte), make(chan []byte)}
 	done_signal := make(chan bool)
